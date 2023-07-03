@@ -659,6 +659,35 @@ class IntentAccuracy(BatchedRewardFunction):
         return rewards.tolist()
 
 
+from vlm_utils.chair import CHAIR
+import pickle
+import json
+class CHAIRRewardFunction(RewardFunction):
+    def __init__(self, *args) -> None:
+        super().__init__()
+        with open('/mnt/hsyoon/workspace/uiuc/VLM_hallucination/intructblip_vicuna7b/split0_7generate_6_21_2023_answer.pkl', 'rb') as f:
+            datas = pickle.load(f)
+        img_ids = [int(data[0][0].split('.')[0].split('_')[-1]) for data in datas]
+
+        self._metric = CHAIR(img_ids,'/mnt/hsyoon/workspace/datasets/mscoco/annotations/')
+        self._metric.get_annotations()
+
+    def __call__(
+            self,
+            current_observation: Observation,
+            action: int,
+            next_observation: Observation,
+            done: bool,
+            meta_info: Dict[str, Any] = None
+    ) -> float:
+        if done:
+            # TODO: Need to extract caption from next_observation
+            caption = ...
+            reward = self._metric.hsy_compute_chair(caption)
+            return reward
+        return 0
+
+
 if __name__ == "__main__":
     predictions = "hello there general kenobi"
     references = ["hello there general kenobi", "hello there!!"]
