@@ -678,14 +678,28 @@ class CHAIRRewardFunction(RewardFunction):
             action: int,
             next_observation: Observation,
             done: bool,
-            meta_info: Dict[str, Any] = None
+            meta_info: Dict[str, Any] = None,
+            compute_per_step: bool = False,
+            use_chair_i: bool = True,
     ) -> float:
-        if done:
-            # TODO: Need to extract caption from next_observation
-            caption = ...
-            reward = self._metric.hsy_compute_chair(caption)
-            return reward
-        return 0
+        if compute_per_step:
+            image_id = next_observation.meta_info['image_id']  # string
+            instruction = current_observation.prompt_or_input_text
+            generated_cap = next_observation.context_text
+            caption = [[[image_id], [instruction], [generated_cap]]]
+            chair_s, chair_i = self._metric.hsy_compute_chair(caption)
+            return chair_i if use_chair_i else chair_s
+        else:
+            if done:
+                image_id = next_observation.meta_info['image_id']           # string
+                instruction = current_observation.prompt_or_input_text
+                generated_cap = next_observation.context_text
+
+                caption = [[[image_id], [instruction], [generated_cap]]]
+                chair_s, chair_i = self._metric.hsy_compute_chair(caption)
+                return chair_i if use_chair_i else chair_s
+            else:
+                return 0.0
 
 
 if __name__ == "__main__":

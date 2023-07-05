@@ -297,14 +297,14 @@ class CHAIR(object):
         for i, cap_eval in enumerate(caps):
     
             cap = cap_eval[-1][0]
-            imid = int(cap_eval[0][0].split('.')[0].split('_')[-1])
+            # imid = int(cap_eval[0][0].split('.')[0].split('_')[-1])
+            imid = int(cap_eval[0][0])  # Extract from image ID rather than path of image
 
             #get all words in the caption, as well as corresponding node word
             words, node_words, idxs, raw_words = self.caption_to_words(cap) 
 
             gt_objects = imid_to_objects[imid]
-            #cap_dict = {'image_id': imid, 'mscoco_hallucinated_words': [], 'hallucination_idxs': [], 'mscoco_gt_words': list(gt_objects)}
-            cap_dict = {'image_id': imid, 
+            cap_dict = {'image_id': imid,
                         'caption': cap,
                         'mscoco_hallucinated_words': [],
                         'mscoco_gt_words': list(gt_objects),
@@ -313,16 +313,6 @@ class CHAIR(object):
                         'words': raw_words 
                         }
 
-            # cap_dict['metrics'] = {'Bleu_1': cap_eval['Bleu_1'],
-            #                     'Bleu_2': cap_eval['Bleu_2'],
-            #                     'Bleu_3': cap_eval['Bleu_3'],
-            #                     'Bleu_4': cap_eval['Bleu_4'],
-            #                     'METEOR': cap_eval['METEOR'],
-            #                     'CIDEr': cap_eval['CIDEr'],
-            #                     'SPICE': cap_eval['SPICE'],
-            #                     'ROUGE_L': cap_eval['ROUGE_L'],
-            #                     'CHAIRs': 0,
-            #                     'CHAIRi': 0}
             cap_dict['metrics'] = {'CHAIRs': 0, 'CHAIRi': 0}
             #count hallucinated words
             coco_word_count += len(node_words) 
@@ -344,24 +334,11 @@ class CHAIR(object):
             if len(words) > 0:
                 cap_dict['metrics']['CHAIRi'] = len(cap_dict['mscoco_hallucinated_words'])/float(len(words))
 
-            #output['sentences'].append(cap_dict)
-            
         chair_s = (num_hallucinated_caps/num_caps)
         chair_i = (hallucinated_word_count/coco_word_count)
-
-    
-        # output['overall_metrics'] = {'Bleu_1': self.metrics['Bleu_1'],
-        #                             'Bleu_2': self.metrics['Bleu_2'],
-        #                             'Bleu_3': self.metrics['Bleu_3'],
-        #                             'Bleu_4': self.metrics['Bleu_4'],
-        #                             'METEOR': self.metrics['METEOR'],
-        #                             'CIDEr': self.metrics['CIDEr'],
-        #                             'SPICE': self.metrics['SPICE'],
-        #                             'ROUGE_L': self.metrics['ROUGE_L'],
-        #                             'CHAIRs': chair_s,
-        #                             'CHAIRi': chair_i}
-    
         return chair_s, chair_i
+
+
 def load_generated_captions(cap_file):
    #Read in captions        
    caps = json.load(open(cap_file))
