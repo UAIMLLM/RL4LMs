@@ -661,9 +661,8 @@ class IntentAccuracy(BatchedRewardFunction):
 
 from vlm_utils.chair import CHAIR
 import pickle
-import json
 class CHAIRRewardFunction(RewardFunction):
-    def __init__(self, *args) -> None:
+    def __init__(self, compute_per_step: bool = False, use_chair_i: bool = True) -> None:
         super().__init__()
         with open('/mnt/hsyoon/workspace/uiuc/VLM_hallucination/intructblip_vicuna7b/split0_7generate_6_21_2023_answer.pkl', 'rb') as f:
             datas = pickle.load(f)
@@ -672,6 +671,9 @@ class CHAIRRewardFunction(RewardFunction):
         self._metric = CHAIR(img_ids,'/mnt/hsyoon/workspace/datasets/mscoco/annotations/')
         self._metric.get_annotations()
 
+        self.compute_per_step = compute_per_step
+        self.use_chair_i = use_chair_i
+
     def __call__(
             self,
             current_observation: Observation,
@@ -679,16 +681,14 @@ class CHAIRRewardFunction(RewardFunction):
             next_observation: Observation,
             done: bool,
             meta_info: Dict[str, Any] = None,
-            compute_per_step: bool = False,
-            use_chair_i: bool = True,
     ) -> float:
-        if compute_per_step:
+        if self.compute_per_step:
             image_id = next_observation.meta_info['image_id']  # string
             instruction = current_observation.prompt_or_input_text
             generated_cap = next_observation.context_text
             caption = [[[image_id], [instruction], [generated_cap]]]
             chair_s, chair_i = self._metric.hsy_compute_chair(caption)
-            return chair_i if use_chair_i else chair_s
+            return chair_i if self.use_chair_i else chair_s
         else:
             if done:
                 image_id = next_observation.meta_info['image_id']           # string
@@ -697,7 +697,7 @@ class CHAIRRewardFunction(RewardFunction):
 
                 caption = [[[image_id], [instruction], [generated_cap]]]
                 chair_s, chair_i = self._metric.hsy_compute_chair(caption)
-                return chair_i if use_chair_i else chair_s
+                return chair_i if self.use_chair_i else chair_s
             else:
                 return 0.0
 
