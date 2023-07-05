@@ -5,11 +5,10 @@ import os
 import pickle as pkl
 from nltk import word_tokenize
 from collections import defaultdict
-from pattern.en import singularize
 import pdb
 import sys
 import argparse
-from utils.misc import *
+from rl4lms.envs.text_generation.vlm_utils.process import hallucination_file_to_dict
 
 def read_vocab(robust):
 
@@ -58,6 +57,11 @@ def get_lm_consistency(hallucination_by_imid,
             word_hallucinated_total += 1
     
     return word_hallucinated_total/word_hallucinated_idxs
+
+
+
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

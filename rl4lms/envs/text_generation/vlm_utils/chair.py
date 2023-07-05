@@ -1,14 +1,16 @@
-from misc import *
 import sys
-from nltk.stem import *
+# from nltk.stem import *
 import nltk
 import json
-from pattern.en import singularize
+# from pattern.en import singularize
 import argparse
+import re
+from rl4lms.envs.text_generation.vlm_utils.process import singularize
+import os
 
 
-lemma = nltk.wordnet.WordNetLemmatizer()
 
+# lemma = nltk.wordnet.WordNetLemmatizer()
 def combine_coco_captions(annotation_path):
 
     if not os.path.exists('%s/captions_%s2014.json' %(annotation_path, 'val')):
@@ -52,7 +54,7 @@ class CHAIR(object):
         self.coco_path = coco_path
 
         #read in synonyms
-        synonyms = open('data/synonyms.txt').readlines()
+        synonyms = open("rl4lms/envs/text_generation/vlm_utils/synonyms.txt").readlines()
         synonyms = [s.strip().split(', ') for s in synonyms]
         self.mscoco_objects = [] #mscoco objects and *all* synonyms
         self.inverse_synonym_dict = {}
@@ -281,13 +283,8 @@ class CHAIR(object):
         '''
         Given ground truth objects and generated captions, determine which sentences have hallucinated words.
         '''
-    
-        #self._load_generated_captions_into_evaluator(cap_file)
-
         imid_to_objects = self.imid_to_objects
-        #caps = self.caps
-
-        num_caps = 0.
+        num_caps = len(caps)
         num_hallucinated_caps = 0.
         hallucinated_word_count = 0.
         coco_word_count = 0.
@@ -295,7 +292,8 @@ class CHAIR(object):
         output = {'sentences': []} 
     
         for i, cap_eval in enumerate(caps):
-    
+            each_cap_coco_word_count = 0
+            each_cap_hallucinated_word_count = 0
             cap = cap_eval[-1][0]
             imid = int(cap_eval[0][0].split('.')[0].split('_')[-1])
 
@@ -315,16 +313,17 @@ class CHAIR(object):
             cap_dict['metrics'] = {'CHAIRs': 0, 'CHAIRi': 0}
             #count hallucinated words
             coco_word_count += len(node_words) 
+            each_cap_coco_word_count=len(node_words)
             hallucinated = False
             for word, node_word, idx in zip(words, node_words, idxs):
                 if node_word not in gt_objects:
                     hallucinated_word_count += 1 
+                    each_cap_hallucinated_word_count+=1
                     cap_dict['mscoco_hallucinated_words'].append((word, node_word))
                     cap_dict['hallucination_idxs'].append(idx)
                     hallucinated = True      
     
             #count hallucinated caps
-            num_caps += 1
             if hallucinated:
                 num_hallucinated_caps += 1
     
@@ -332,6 +331,9 @@ class CHAIR(object):
             cap_dict['metrics']['CHAIRi'] = 0.
             if len(words) > 0:
                 cap_dict['metrics']['CHAIRi'] = len(cap_dict['mscoco_hallucinated_words'])/float(len(words))
+
+            # print(f"{each_cap_hallucinated_word_count=} {each_cap_coco_word_count=} Hallucination = {each_cap_hallucinated_word_count/each_cap_coco_word_count}")
+            # import pdb; pdb.set_trace()
 
         chair_s = (num_hallucinated_caps/num_caps)
         chair_i = (hallucinated_word_count/coco_word_count)

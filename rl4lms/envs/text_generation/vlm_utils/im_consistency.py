@@ -4,10 +4,9 @@ import pickle as pkl
 import pdb
 import numpy as np
 from nltk import word_tokenize
-from pattern.en import singularize
 import nltk
 import argparse
-from utils.misc import *
+from rl4lms.envs.text_generation.vlm_utils.process import hallucination_file_to_dict
 
 def get_label_dicts(robust=False):
     if robust:
@@ -43,6 +42,14 @@ def get_im_consistency(hallucination_by_imid,
             total += 1
    
     return scores/total 
+
+
+def hallucination_file_to_dict(hallucinated_json):
+
+    hallucination_data = json.load(open(hallucinated_json))
+    hallucination_by_imid = {h['image_id']: h for h in hallucination_data['sentences']}
+    
+    return hallucination_by_imid
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

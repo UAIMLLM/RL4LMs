@@ -662,17 +662,25 @@ class IntentAccuracy(BatchedRewardFunction):
 from vlm_utils.chair import CHAIR
 import pickle
 class CHAIRRewardFunction(RewardFunction):
-    def __init__(self, compute_per_step: bool = False, use_chair_i: bool = True) -> None:
+    ''' Give chair score as reward. Support COCO dataset only. TODO: support other datasets.
+
+    Args:
+        compute_per_step (bool): whether to compute chair score per step or at the end of episode
+        use_chair_s (bool): whether to use chair_s or chair_i as reward
+
+    Returns:
+        reward (float):  (1-chair_i) +  not (chair_s) (inverse hallucination score)  
+    '''
+
+    def __init__(self, compute_per_step: bool = False, use_chair_s: bool = False) -> None:
         super().__init__()
-        with open('/mnt/hsyoon/workspace/uiuc/VLM_hallucination/intructblip_vicuna7b/split0_7generate_6_21_2023_answer.pkl', 'rb') as f:
+        with open('rl4lms/envs/text_generation/vlm_utils/split0_7generate_6_21_2023_answer.pkl', 'rb') as f:
             datas = pickle.load(f)
         img_ids = [int(data[0][0].split('.')[0].split('_')[-1]) for data in datas]
-
-        self._metric = CHAIR(img_ids,'/mnt/hsyoon/workspace/datasets/mscoco/annotations/')
+        self._metric = CHAIR(img_ids,'rl4lms/envs/text_generation/vlm_utils/annotations')
         self._metric.get_annotations()
-
         self.compute_per_step = compute_per_step
-        self.use_chair_i = use_chair_i
+        self.use_chair_s = use_chair_s
 
     def __call__(
             self,
@@ -683,55 +691,84 @@ class CHAIRRewardFunction(RewardFunction):
             meta_info: Dict[str, Any] = None,
     ) -> float:
         if self.compute_per_step:
-            image_id = next_observation.meta_info['image_id']  # string
-            instruction = current_observation.prompt_or_input_text
+            image_id = next_observation.meta_info['image_id']  # 
+            instruction = next_observation.prompt_or_input_text
             generated_cap = next_observation.context_text
-            caption = [[[image_id], [instruction], [generated_cap]]]
-            chair_s, chair_i = self._metric.hsy_compute_chair(caption)
-            return chair_i if self.use_chair_i else chair_s
+            captions = [[[image_id], [instruction], [generated_cap]]]
+            # Given a list of captions, each capture is [image_id, instruction, generated_cap], compute hallucination score
+            chair_s, chair_i = self._metric.hsy_compute_chair(captions)
+            reward  = 1 - chair_i
+            if self.use_chair_s:
+                if not chair_s:
+                    reward +=1  
+            return reward
+        
         else:
             if done:
-                image_id = next_observation.meta_info['image_id']           # string
-                instruction = current_observation.prompt_or_input_text
+                image_id = next_observation.meta_info['image_id']           # 
+                instruction = next_observation.prompt_or_input_text
                 generated_cap = next_observation.context_text
-
-                caption = [[[image_id], [instruction], [generated_cap]]]
-                chair_s, chair_i = self._metric.hsy_compute_chair(caption)
-                return chair_i if self.use_chair_i else chair_s
+                captions = [[[image_id], [instruction], [generated_cap]]]
+                chair_s, chair_i = self._metric.hsy_compute_chair(captions)
+                reward  = 1 - chair_i
+                if self.use_chair_s:
+                    if not chair_s:
+                        reward +=1  
+                return reward
             else:
                 return 0.0
-
+            
+    def evaluate(self,data):
+        self._metric.hsy_compute_chair(data)
 
 if __name__ == "__main__":
     predictions = "hello there general kenobi"
     references = ["hello there general kenobi", "hello there!!"]
+    meta_info = {"image_id": "1234"}
     observation = Observation(
-        None, None, None, None, None, predictions, references, None, None, None, None
+        None, None, None, None, None, predictions, references, None, None, None, meta_info
     )
 
-    reward_fn = MeteorRewardFunction()
-    print(reward_fn(None, None, observation, True))
+    # reward_fn = MeteorRewardFunction()
+    # print(reward_fn(None, None, observation, True))
 
-    reward_fn = chrF()
-    print(reward_fn(None, None, observation, True))
+    # reward_fn = chrF()
+    # print(reward_fn(None, None, observation, True))
 
-    reward_fn = RougeCombined()
-    print(reward_fn(None, None, observation, True))
+    # reward_fn = RougeCombined()
+    # print(reward_fn(None, None, observation, True))
 
-    reward_fn = RougeRewardFunction(rouge_type="rouge1")
-    print(reward_fn(None, None, observation, True))
+    # reward_fn = RougeRewardFunction(rouge_type="rouge1")
+    # print(reward_fn(None, None, observation, True))
 
-    reward_fn = RougeRewardFunction(rouge_type="rouge2")
-    print(reward_fn(None, None, observation, True))
+    # reward_fn = RougeRewardFunction(rouge_type="rouge2")
+    # print(reward_fn(None, None, observation, True))
 
-    reward_fn = RougeRewardFunction(rouge_type="rougeL")
-    print(reward_fn(None, None, observation, True))
+    # reward_fn = RougeRewardFunction(rouge_type="rougeL")
+    # print(reward_fn(None, None, observation, True))
 
-    reward_fn = BERTScoreRewardFunction(language="en")
-    print(reward_fn(None, None, observation, True))
+    # reward_fn = BERTScoreRewardFunction(language="en")
+    # print(reward_fn(None, None, observation, True))
 
-    reward_fn = BLEURewardFunction()
-    print(reward_fn(None, None, observation, True))
+    # reward_fn = BLEURewardFunction()
+    # print(reward_fn(None, None, observation, True))
 
-    reward_fn = BLEURTRewardFunction()
-    print(reward_fn(None, None, observation, True))
+    # reward_fn = BLEURTRewardFunction()
+    # print(reward_fn(None, None, observation, True))
+
+    # Test chair function 
+    predictions = "The image features a group of people in a kitchen, wearing aprons and gloves, preparing food in a large food preparation area. They are working together to assemble a variety of dishes, likely for a large group of people. The kitchen is equipped with a sink, a refrigerator, and several food bowls, suggesting that they are preparing meals for a large group. The atmosphere is lively and productive, with everyone working diligently to complete their tasks."
+    references =  None
+    meta_info = {"image_id": 'COCO_val2014_000000342387.jpg'}
+    observation = Observation(
+        None, None, None, None, None, predictions, references, None, None, None, meta_info
+    )
+    reward_fn = CHAIRRewardFunction()
+
+
+
+    print(reward_fn(None, None, observation, True, meta_info))
+
+    # with open('rl4lms/envs/text_generation/vlm_utils/split0_7generate_6_21_2023_answer.pkl', 'rb') as f:
+    #         datas = pickle.load(f)
+    # reward_fn.evaluate(datas)    

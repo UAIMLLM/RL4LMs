@@ -2,9 +2,11 @@ import os
 import sys
 import json
 import numpy as np
-import lm_consistency as LM
-import im_consistency as IM
-from chair import *
+import rl4lms.envs.text_generation.vlm_utils.lm_consistency as LM
+import rl4lms.envs.text_generation.vlm_utils.im_consistency as IM
+# from chair import *
+
+
 
 def hallucination_file_to_dict(hallucinated_json):
 
