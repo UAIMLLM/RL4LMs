@@ -297,8 +297,7 @@ class CHAIR(object):
         for i, cap_eval in enumerate(caps):
     
             cap = cap_eval[-1][0]
-            # imid = int(cap_eval[0][0].split('.')[0].split('_')[-1])
-            imid = int(cap_eval[0][0])  # Extract from image ID rather than path of image
+            imid = int(cap_eval[0][0].split('.')[0].split('_')[-1])
 
             #get all words in the caption, as well as corresponding node word
             words, node_words, idxs, raw_words = self.caption_to_words(cap) 
